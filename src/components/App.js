@@ -119,10 +119,10 @@ function App() {
       });
   }
   function tokenCheck() {
-    const token = localStorage.getItem('jwt');
-    if (token) {
-      setToken(token);
-      auth.getContent(token)
+    const jwt = localStorage.getItem('jwt');
+    if (jwt) {
+      setToken(jwt);
+      auth.getContent(jwt)
         .then((data) => {
           setLoggedIn(true);
           setEmail(data.email);
