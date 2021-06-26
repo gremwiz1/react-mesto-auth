@@ -8,13 +8,26 @@ import EditProfilePopup from './EditProfilePopup';
 import EditAvatarPopup from './EditAvatarPopup';
 import AddPlacePopup from './AddPlacePopup';
 import { CurrentUserContext } from '../contexts/CurrentUserContext';
+import ProtectedRoute from './ProtectedRoute';
+import { Redirect, Switch, Route, useHistory } from 'react-router-dom';
+import Register from './Register';
+import Login from './Login';
+import * as auth from '../utils/auth';
+import InfoTooltip from './InfoTooltip';
 function App() {
   const [isAddPlacePopupOpen, setIsAddPlacePopupOpen] = React.useState(false);
   const [isEditProfilePopupOpen, setIsEditProfilePopupOpen] = React.useState(false);
   const [isEditAvatarPopupOpen, setIsEditAvatarPopupOpen] = React.useState(false);
+  const [isInfoTooltipPopupOpen, setIsInfoTooltipPopupOpen] = React.useState(false);
+  const [isSuccess, setIsSuccess] = React.useState(false);
   const [selectedCard, setSelectedCard] = React.useState(null);
   const [currentUser, setCurrentUser] = React.useState({});
   const [cards, setCards] = React.useState([]);
+  const [loggedIn, setLoggedIn] = React.useState(false);
+  const [email, setEmail] = React.useState("");
+  const [token, setToken] = React.useState("");
+  const [infoTooltipMessage, setInfoTooltipMessage] = React.useState("");
+  const history = useHistory();
   React.useEffect(() => {
     Promise.all([
       api.getUserProfile(),
@@ -31,6 +44,7 @@ function App() {
     setIsEditAvatarPopupOpen(false);
     setIsEditProfilePopupOpen(false);
     setIsAddPlacePopupOpen(false);
+    setIsInfoTooltipPopupOpen(false);
     setSelectedCard(null);
   }
   function handleEditAvatarClick() {
@@ -104,18 +118,94 @@ function App() {
         console.log(err);
       });
   }
-
+  function tokenCheck() {
+    const token = localStorage.getItem('jwt');
+    if (token) {
+      setToken(token);
+      auth.getContent(token)
+        .then((data) => {
+          setLoggedIn(true);
+          setEmail(data.email);
+          history.push('/');
+        }).catch((err) => {
+          if (err === 400) return console.log('Токен не передан или передан не в том формате');
+          if (err === 401) return console.log('Переданный токен некорректен');
+          console.log(err);
+        })
+    }
+  }
+  React.useEffect(() => {
+    tokenCheck();
+  }, []);
+  function onRegister({ email, password }) {
+    auth.register({ email, password })
+      .then((data) => {
+        if (data) {
+          setIsInfoTooltipPopupOpen(true);
+          setIsSuccess(true);
+          setInfoTooltipMessage('Вы успешно зарегистрировались!');
+          history.push('/signin');
+        }
+      }).catch((err) => {
+        setIsInfoTooltipPopupOpen(true);
+        setIsSuccess(false);
+        setInfoTooltipMessage('Что-то пошло не так! Попробуйте ещё раз.');
+        if (err === 400) return console.log('некорректно заполнено одно из полей ');
+        console.log(err);
+      })
+  }
+  function onLogin({ email, password }) {
+    auth.authorize({ email, password })
+      .then((data) => {
+        if (data.token) {
+          setToken(data.token);
+          localStorage.setItem('jwt', data.token);
+          setEmail(email);
+          setLoggedIn(true);
+          setIsInfoTooltipPopupOpen(true);
+          setIsSuccess(true);
+          setInfoTooltipMessage('Вы успешно авторизировались!');
+          history.push('/');
+        }
+      }).catch((err) => {
+        setIsInfoTooltipPopupOpen(true);
+        setIsSuccess(false);
+        if (err === 400) return setInfoTooltipMessage('не передано одно из полей');
+        if (err === 401) return setInfoTooltipMessage('пользователь с email не найден');
+        setInfoTooltipMessage('Попробуйте еще раз!');
+        console.log(err);
+      })
+  }
+  function onSignOut() {
+    localStorage.removeItem('jwt');
+    setLoggedIn(false);
+    history.push('/signin');
+  }
   return (
     <div className="root">
       <div className="page">
-        <Header />
+        <Header email={email} onClick={onSignOut} />
         <CurrentUserContext.Provider value={currentUser}>
-          <Main cards={cards} onCardLike={handleCardLike} onCardDelete={handleCardDelete} onAddPlace={handleAddPlaceClick} onEditProfile={handleEditProfileClick} onEditAvatar={handleEditAvatarClick}
-            onCardClick={handleCardClick} />
+          <Switch>
+            <ProtectedRoute exact path="/" loggedIn={loggedIn}>
+              <Main cards={cards} onCardLike={handleCardLike} onCardDelete={handleCardDelete} onAddPlace={handleAddPlaceClick} onEditProfile={handleEditProfileClick} onEditAvatar={handleEditAvatarClick}
+                onCardClick={handleCardClick} />
+            </ProtectedRoute>
+            <Route path="/signin">
+              <Login onLogin={onLogin} />
+            </Route>
+            <Route path="/signup">
+              <Register onRegister={onRegister} />
+            </Route>
+            <Route>
+              {loggedIn ? <Redirect to="/" /> : <Redirect to="/signin" />}
+            </Route>
+          </Switch>
           <Footer />
           <AddPlacePopup isOpen={isAddPlacePopupOpen} onClose={closeAllPopups} onAddPlace={handleAddPlaceSubmit} />
           <EditProfilePopup isOpen={isEditProfilePopupOpen} onClose={closeAllPopups} onUpdateUser={handleUpdateUser} />
           <EditAvatarPopup isOpen={isEditAvatarPopupOpen} onClose={closeAllPopups} onUpdateAvatar={handleUpdateAvatar} />
+          <InfoTooltip isOpen={isInfoTooltipPopupOpen} onClose={closeAllPopups} isSuccess={isSuccess} message={infoTooltipMessage} />
         </CurrentUserContext.Provider>
         <ImagePopup card={selectedCard} onClose={closeAllPopups} />
       </div>
