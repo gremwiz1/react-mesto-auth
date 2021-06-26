@@ -1,5 +1,4 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
 import success from '../images/success.svg';
 import unsuccess from '../images/unsuccess.svg';
 
