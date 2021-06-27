@@ -17,7 +17,7 @@ function AutorizationForm({ name, textButton, onSubmit, loginLink }) {
 
     return (
 
-        <form className="form" action="#" onSubmit={handleSubmit} noValidate>
+        <form className="form" action="#" onSubmit={handleSubmit}>
             <h2 className="form__title">{name}</h2>
             <input className="form__input" type="email" placeholder="email" name="email" value={email} onChange={handleChangeEmail} required></input>
             <input className="form__input" type="password" placeholder="Пароль" name="password" value={password} onChange={handleChangePassword} required></input>
