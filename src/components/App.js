@@ -125,7 +125,7 @@ function App() {
       auth.getContent(jwt)
         .then((data) => {
           setLoggedIn(true);
-          setEmail(data.email);
+          setEmail(data.data.email);
           history.push('/');
         }).catch((err) => {
           if (err === 400) return console.log('Токен не передан или передан не в том формате');
